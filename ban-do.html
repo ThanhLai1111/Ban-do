@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bản Đồ Khu Phố</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        .location-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-size: 24px;
+            z-index: 1000;
+        }
+        .search-box {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="search-box">
+        <input type="text" id="search" placeholder="Tìm kiếm địa điểm">
+        <button onclick="searchLocation()">🔍</button>
+    </div>
+    <div class="location-btn" onclick="getLocation()">📍</div>
+
+    <script>
+        var map = L.map('map').setView([10.75254644219754, 106.67326748341377], 16);
+        var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' });
+        var satelliteLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Imagery © Google'
+        });
+        streetLayer.addTo(map);
+        
+        var baseMaps = {
+            "Bản đồ đường phố": streetLayer,
+            "Chế độ vệ tinh": satelliteLayer
+        };
+        L.control.layers(baseMaps).addTo(map);
+
+        var khuPhoData = JSON.parse(localStorage.getItem('khuPhoData')) || {
+            "Khu Phố 1": { lat: 10.755, lng: 106.664, info: "Ban điều hành: Ông A - 0123456789" },
+            "Khu Phố 2": { lat: 10.756, lng: 106.666, info: "Ban điều hành: Ông C - 0234567890" }
+        };
+
+        function addMarkers() {
+            for (let key in khuPhoData) {
+                let kp = khuPhoData[key];
+                L.marker([kp.lat, kp.lng]).addTo(map)
+                    .bindPopup(`<b>${key}</b><br>${kp.info}`);
+            }
+        }
+        addMarkers();
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+                    L.marker([lat, lng], { icon: L.divIcon({ className: 'my-location-icon', html: '📍', iconSize: [30, 30] }) }).addTo(map)
+                        .bindPopup("Vị trí của bạn").openPopup();
+                    map.setView([lat, lng], 16);
+                });
+            } else {
+                alert("Trình duyệt của bạn không hỗ trợ định vị.");
+            }
+        }
+
+        function searchLocation() {
+            var query = document.getElementById("search").value;
+            if (query) {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            var lat = data[0].lat;
+                            var lon = data[0].lon;
+                            map.setView([lat, lon], 16);
+                            L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
+                        } else {
+                            alert("Không tìm thấy địa điểm.");
+                        }
+                    });
+            }
+        }
+    </script>
+</body>
+</html>
